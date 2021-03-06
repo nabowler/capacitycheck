@@ -109,7 +109,7 @@ func CheckWithOptions(ctx context.Context, bytes uint64, dir string, options Che
 		return nil
 	}
 
-	debugF("Beginnging reading")
+	debugF("Beginning reading")
 	inHash := crc32.NewIEEE()
 	totalRead := uint64(0)
 	for n := uint64(0); n <= bytes; n += uint64(len(buff)) {
