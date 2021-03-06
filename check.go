@@ -78,6 +78,8 @@ func CheckWithOptions(ctx context.Context, bytes uint64, dir string, options Che
 	buff := make([]byte, bufferSize)
 	outHash := crc32.NewIEEE()
 	totalWritten := uint64(0)
+
+	out := io.MultiWriter(outHash, tmpFile)
 	for n := uint64(0); n <= bytes; n += uint64(len(buff)) {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -87,12 +89,7 @@ func CheckWithOptions(ctx context.Context, bytes uint64, dir string, options Che
 			return err
 		}
 
-		_, err = outHash.Write(buff)
-		if err != nil {
-			return err
-		}
-
-		_, err = tmpFile.Write(buff)
+		_, err = out.Write(buff)
 		if err != nil {
 			return err
 		}
