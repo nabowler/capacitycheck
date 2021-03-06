@@ -48,7 +48,7 @@ func CheckWithOptions(ctx context.Context, bytes uint64, dir string, options Che
 
 	numLoops := bytes / bufferSize
 	if numLoops*bufferSize < bytes {
-		numLoops += 1
+		numLoops++
 	}
 	actualBytes := numLoops * bufferSize
 
