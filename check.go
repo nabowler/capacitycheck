@@ -4,7 +4,6 @@ import (
 	"context"
 	"hash/crc32"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"os"
 
@@ -46,14 +45,11 @@ func CheckWithOptions(ctx context.Context, bytes uint64, dir string, options Che
 	onRead := onNoop
 	bufferSize := uint64(humanize.MByte)
 
-	numLoops := bytes / bufferSize
-	if numLoops*bufferSize < bytes {
-		numLoops++
-	}
-	actualBytes := numLoops * bufferSize
-
 	if options.BufferSize > 0 {
 		bufferSize = options.BufferSize
+	}
+	if bufferSize > bytes {
+		bufferSize = bytes
 	}
 	if options.OnWrite != nil {
 		onWrite = options.OnWrite
@@ -65,7 +61,7 @@ func CheckWithOptions(ctx context.Context, bytes uint64, dir string, options Che
 		debugF = options.DebugF
 	}
 
-	tmpFile, err := ioutil.TempFile(dir, "capacitycheck-")
+	tmpFile, err := os.CreateTemp(dir, "capacitycheck-")
 	if err != nil {
 		debugF("temp file creation failed: %v", err)
 		return err
@@ -80,7 +76,11 @@ func CheckWithOptions(ctx context.Context, bytes uint64, dir string, options Che
 	totalWritten := uint64(0)
 
 	out := io.MultiWriter(outHash, tmpFile)
-	for n := uint64(0); n <= bytes; n += uint64(len(buff)) {
+	for n := uint64(0); n < bytes; n += bufferSize {
+		if n+bufferSize > bytes {
+			buff = make([]byte, bytes-n)
+		}
+
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -94,8 +94,8 @@ func CheckWithOptions(ctx context.Context, bytes uint64, dir string, options Che
 			return err
 		}
 
-		totalWritten += bufferSize
-		onWrite(totalWritten, actualBytes)
+		totalWritten += uint64(len(buff))
+		onWrite(totalWritten, bytes)
 	}
 	err = tmpFile.Sync()
 	if err != nil {
@@ -112,7 +112,12 @@ func CheckWithOptions(ctx context.Context, bytes uint64, dir string, options Che
 	debugF("Beginning reading")
 	inHash := crc32.NewIEEE()
 	totalRead := uint64(0)
-	for n := uint64(0); n <= bytes; n += uint64(len(buff)) {
+	buff = make([]byte, bufferSize)
+	for n := uint64(0); n < bytes; n += uint64(len(buff)) {
+		if n+bufferSize > bytes {
+			buff = make([]byte, bytes-n)
+		}
+
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -126,8 +131,8 @@ func CheckWithOptions(ctx context.Context, bytes uint64, dir string, options Che
 			return err
 		}
 
-		totalRead += bufferSize
-		onRead(totalRead, actualBytes)
+		totalRead += uint64(len(buff))
+		onRead(totalRead, bytes)
 	}
 
 	if inHash.Sum32() != outHash.Sum32() {

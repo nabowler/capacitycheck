@@ -4,11 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	humanize "github.com/dustin/go-humanize"
 	"github.com/nabowler/capacitycheck"
@@ -18,8 +16,6 @@ import (
 )
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
-
 	var dir string
 	flag.StringVarP(&dir, "dir", "d", "", "test directory")
 
